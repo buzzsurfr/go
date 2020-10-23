@@ -1,5 +1,4 @@
-// Package grpc implements a Cloud Map resolver. It sends the target
-// name without scheme back to gRPC as resolved address.
+// Package grpc implements a Cloud Map resolver. It sends the targets without scheme back to gRPC as resolved addresses.
 //
 // Based upon google.golang.org/grpc/resolver
 package grpc
@@ -20,7 +19,10 @@ var logger = grpclog.Component("cloudmap")
 
 const scheme = "awscloudmap"
 
-// NewBuilder builds a new resolver builder
+// NewBuilder builds a new Cloud Map resolver builder. NewBuilder can be used inline with a grpc.Dial call.
+//
+// Example:
+//     conn, err := grpc.Dial("service.namespace:50051", grpc.WithResolvers(cloudmap.NewBuilder())
 func NewBuilder() resolver.Builder {
 	return &cloudMapBuilder{}
 }
