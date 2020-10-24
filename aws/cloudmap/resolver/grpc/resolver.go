@@ -80,7 +80,9 @@ type cloudMapResolver struct {
 
 func (r *cloudMapResolver) start() {
 	svc := servicediscovery.New(r.sess)
-	xray.AWS(svc.Client)
+	if xray.SdkDisabled() {
+		xray.AWS(svc.Client)
+	}
 
 	// Parse endpoint into service and namespace
 	endpoint := parseEndpoint(r.target.Endpoint)
