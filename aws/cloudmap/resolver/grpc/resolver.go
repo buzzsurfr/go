@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/servicediscovery"
+	"github.com/aws/aws-xray-sdk-go/xray"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
 )
@@ -55,6 +56,7 @@ type cloudMapResolver struct {
 
 func (r *cloudMapResolver) start() {
 	svc := servicediscovery.New(r.sess)
+	xray.AWS(svc.Client)
 
 	// Parse endpoint into service and namespace
 	endpoint := parseEndpoint(r.target.Endpoint)
