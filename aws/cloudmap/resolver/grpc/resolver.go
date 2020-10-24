@@ -4,6 +4,7 @@
 package grpc
 
 import (
+	"context"
 	"net"
 	"strings"
 
@@ -20,25 +21,47 @@ var logger = grpclog.Component("cloudmap")
 
 const scheme = "awscloudmap"
 
+// BuilderOption for passing options to your builder
+type BuilderOption func(*cloudMapBuilder) error
+
+// WithContext adds a context to your builder
+func WithContext(ctx context.Context) BuilderOption {
+	return func(b *cloudMapBuilder) error {
+		b.context = ctx
+		return nil
+	}
+}
+
 // NewBuilder builds a new Cloud Map resolver builder. NewBuilder can be used inline with a grpc.Dial call.
 //
 // Example:
 //     conn, err := grpc.Dial("service.namespace:50051", grpc.WithResolvers(cloudmap.NewBuilder())
-func NewBuilder() resolver.Builder {
-	return &cloudMapBuilder{}
+func NewBuilder(opts ...BuilderOption) resolver.Builder {
+	b := &cloudMapBuilder{
+		context: context.Background(),
+	}
+
+	for _, opt := range opts {
+		opt(b)
+	}
+
+	return b
 }
 
-type cloudMapBuilder struct{}
+type cloudMapBuilder struct {
+	context context.Context
+}
 
 // Build builds the resolver.
 //   target can be in the format "service.namespace[:port]" or "awscloudmap:///service.namespace[:port]"
-func (*cloudMapBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+func (b *cloudMapBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
 	r := &cloudMapResolver{
 		target: target,
 		cc:     cc,
 		sess: session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		})),
+		context: b.context,
 	}
 	r.start()
 	return r, nil
@@ -49,9 +72,10 @@ func (*cloudMapBuilder) Scheme() string {
 }
 
 type cloudMapResolver struct {
-	target resolver.Target
-	cc     resolver.ClientConn
-	sess   *session.Session
+	target  resolver.Target
+	cc      resolver.ClientConn
+	sess    *session.Session
+	context context.Context
 }
 
 func (r *cloudMapResolver) start() {
@@ -62,7 +86,7 @@ func (r *cloudMapResolver) start() {
 	endpoint := parseEndpoint(r.target.Endpoint)
 
 	// Discover instances
-	result, err := svc.DiscoverInstances(&servicediscovery.DiscoverInstancesInput{
+	result, err := svc.DiscoverInstancesWithContext(r.context, &servicediscovery.DiscoverInstancesInput{
 		HealthStatus:  aws.String("ALL"),
 		MaxResults:    aws.Int64(10),
 		NamespaceName: aws.String(endpoint.namespace),
