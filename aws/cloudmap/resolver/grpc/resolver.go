@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-var logger = grpclog.Component("cloudmap")
+var logger = grpclog.Component("awscloudmap")
 
 const scheme = "awscloudmap"
 
