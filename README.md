@@ -55,3 +55,23 @@ func init() {
 	grpc.SetDefaultScheme("awscloudmap")
 }
 ```
+
+### AWS X-Ray integration
+
+The Cloud Map resolver supports AWS X-Ray for sending traces used by the resolver.
+
+The Builder supports a functional option `WithContext()` where the context can be passed into the package from the main program. The context is necessary in order for the xray package to identify the TraceID.
+
+X-Ray needs to be integrated into your application. To do so, start a segment at the beginning of your program.
+
+```go
+xrayCtx, seg := xray.BeginSegment(context.Background(), "Segment Name")
+defer seg.Close(nil)
+```
+
+Since the resolver is loaded at init time, adding X-Ray integration requires creating and overriding the existing resolver. Create the custom resolver with the context, then call `grpc.Dial` using `WithResolvers()` option.
+
+```go
+customResolver := cloudmap.NewBuilder(cloudmap.WithContext(xrayCtx))
+conn, err := grpc.Dial("awscloudmap:///service.namespace[:port]", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithResolvers(customResolver))
+```
