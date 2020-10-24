@@ -80,7 +80,7 @@ type cloudMapResolver struct {
 
 func (r *cloudMapResolver) start() {
 	svc := servicediscovery.New(r.sess)
-	if xray.SdkDisabled() {
+	if !xray.SdkDisabled() {
 		xray.AWS(svc.Client)
 	}
 
