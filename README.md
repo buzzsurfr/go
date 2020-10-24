@@ -35,7 +35,7 @@ go get -u github.com/buzzsurfr/go/aws/cloudmap/resolver/grpc
 
 #### per-gRPC connection
 
-To add the resolver to a grpc `Dial` call, ensure the hostname matches the Cloud Map service and namespace, and use the [`WithResolvers()`](https://pkg.go.dev/google.golang.org/grpc@v1.33.1#WithResolvers) function:
+To add the resolver to a grpc `Dial` call, ensure the hostname specifies the scheme `awscloudmap:///`, matches the Cloud Map service and namespace, and use the [`WithResolvers()`](https://pkg.go.dev/google.golang.org/grpc@v1.33.1#WithResolvers) function:
 ```go
 grpc.WithResolvers(cloudmap.NewBuilder())
 ```
@@ -43,12 +43,12 @@ grpc.WithResolvers(cloudmap.NewBuilder())
 For example, the gRPC connection accepts the [`WithResolvers()`](https://pkg.go.dev/google.golang.org/grpc@v1.33.1#WithResolvers) funcdtion as a parameter. The connection string looks like:
 
 ```go
-conn, err := grpc.Dial("service.namespace[:port]", grpc.WithResolvers(cloudmap.NewBuilder()))
+conn, err := grpc.Dial("awscloudmap:///service.namespace[:port]", grpc.WithResolvers(cloudmap.NewBuilder()))
 ```
 
 #### Default resolver
 
-The Cloud Map resolver registers itself as an available _scheme_ named `cloudmap` and can be set to the default by calling the [`SetDefaultScheme()`](https://pkg.go.dev/google.golang.org/grpc@v1.33.1/resolver#SetDefaultScheme) function in your `init` function.
+The Cloud Map resolver registers itself as an available _scheme_ named `awscloudmap` and can be set to the default by calling the [`SetDefaultScheme()`](https://pkg.go.dev/google.golang.org/grpc@v1.33.1/resolver#SetDefaultScheme) function in your `init` function. If you set the default scheme to `awscloudmap`, then you do not need to include the scheme in your hostname, but _ALL_ requests for that application will go to Cloud Map by default.
 
 ```go
 func init() {
