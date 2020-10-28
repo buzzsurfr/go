@@ -5,14 +5,14 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/servicediscovery"
-	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/servicediscovery"
+	"github.com/aws/aws-sdk-go-v2/service/servicediscovery/types"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/resolver"
 )
@@ -56,11 +56,8 @@ type cloudMapBuilder struct {
 //   target can be in the format "service.namespace[:port]" or "awscloudmap:///service.namespace[:port]"
 func (b *cloudMapBuilder) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
 	r := &cloudMapResolver{
-		target: target,
-		cc:     cc,
-		sess: session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		})),
+		target:  target,
+		cc:      cc,
 		context: b.context,
 	}
 	r.start()
@@ -74,52 +71,48 @@ func (*cloudMapBuilder) Scheme() string {
 type cloudMapResolver struct {
 	target  resolver.Target
 	cc      resolver.ClientConn
-	sess    *session.Session
 	context context.Context
 }
 
 func (r *cloudMapResolver) start() {
-	svc := servicediscovery.New(r.sess)
-	if !xray.SdkDisabled() {
-		xray.AWS(svc.Client)
+	cfg, err := config.LoadDefaultConfig()
+	if err != nil {
+		logger.Errorf("unable to load SDK config, %v", err)
 	}
+	svc := servicediscovery.NewFromConfig(cfg)
 
 	// Parse endpoint into service and namespace
 	endpoint := parseEndpoint(r.target.Endpoint)
 
 	// Discover instances
-	result, err := svc.DiscoverInstancesWithContext(r.context, &servicediscovery.DiscoverInstancesInput{
-		HealthStatus:  aws.String("ALL"),
-		MaxResults:    aws.Int64(10),
+	result, err := svc.DiscoverInstances(r.context, &servicediscovery.DiscoverInstancesInput{
+		HealthStatus:  types.HealthStatusFilterAll,
+		MaxResults:    aws.Int32(10),
 		NamespaceName: aws.String(endpoint.namespace),
 		ServiceName:   aws.String(endpoint.service),
 	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case servicediscovery.ErrCodeServiceNotFound:
-				logger.Errorln(servicediscovery.ErrCodeServiceNotFound, aerr.Error())
-			case servicediscovery.ErrCodeNamespaceNotFound:
-				logger.Errorln(servicediscovery.ErrCodeNamespaceNotFound, aerr.Error())
-			case servicediscovery.ErrCodeInvalidInput:
-				logger.Errorln(servicediscovery.ErrCodeInvalidInput, aerr.Error())
-			case servicediscovery.ErrCodeRequestLimitExceeded:
-				logger.Errorln(servicediscovery.ErrCodeRequestLimitExceeded, aerr.Error())
-			default:
-				logger.Errorln(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			logger.Errorln(err.Error())
-		}
+	var serviceNotFoundErr *types.ServiceNotFound
+	if errors.As(err, &serviceNotFoundErr) {
+		logger.Errorln(serviceNotFoundErr.ErrorMessage())
+	}
+	var namespaceNotFoundErr *types.NamespaceNotFound
+	if errors.As(err, &namespaceNotFoundErr) {
+		logger.Errorln(namespaceNotFoundErr.ErrorMessage())
+	}
+	var invalidInputErr *types.InvalidInput
+	if errors.As(err, &invalidInputErr) {
+		logger.Errorln(invalidInputErr.ErrorMessage())
+	}
+	var requestLimitExceededErr *types.RequestLimitExceeded
+	if errors.As(err, &requestLimitExceededErr) {
+		logger.Errorln(requestLimitExceededErr.ErrorMessage())
 	}
 
 	// Format to resolver.State
 	addrs := []resolver.Address{}
 	for _, instance := range result.Instances {
 		addrs = append(addrs, resolver.Address{
-			Addr: aws.StringValue(instance.Attributes["AWS_INSTANCE_IPv4"]),
+			Addr: aws.ToString(instance.Attributes["AWS_INSTANCE_IPv4"]),
 		})
 	}
 
