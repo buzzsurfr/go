@@ -5,6 +5,7 @@ Golang utilities and packages
 
 * `aws/cloudmap/resolver` - Cloud Map custom resolver for Go
   * `aws/cloudmap/resolver/grpc` gRPC resolver that implements [grpc/resolver.Resolver](https://pkg.go.dev/google.golang.org/grpc/resolver#Resolver)
+  * `awsutil/detector` - Detects the compute type
 
 
 ## aws/cloudmap/resolver/grpc
@@ -74,4 +75,34 @@ Since the resolver is loaded at init time, adding X-Ray integration requires cre
 ```go
 customResolver := cloudmap.NewBuilder(cloudmap.WithContext(xrayCtx))
 conn, err := grpc.Dial("awscloudmap:///service.namespace[:port]", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithResolvers(customResolver))
+```
+
+## awsutil/detector
+
+Package detector detects the compute type, supporting the following compute types (in this order):
+
+* AWS Lambda
+* Amazon ECS
+* ~~Amazon EKS~~
+* Kubernetes
+* Docker
+* Amazon EC2
+
+The `Detect` function returns a `DetectOutput` type which does support casting the type to a string as well as boolean check functions (either as functions or methods):
+
+* `IsLambda`
+* `IsECS`
+* `IsEKS`
+* `IsKubernetes`
+* `IsDocker`
+* `IsEC2`
+
+### Example
+
+```go
+import "detector"
+
+func main() {
+  fmt.Println(detector.Detect())
+}
 ```
