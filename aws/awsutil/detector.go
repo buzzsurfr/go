@@ -111,6 +111,8 @@ func Detect() DetectOutput {
 		do.Type = ComputeLambda
 	case checkECS():
 		do.Type = ComputeECS
+	// case checkEKS():
+	// 	do.Type = ComputeEKS
 	case checkKubernetes():
 		do.Type = ComputeKubernetes
 	case checkDocker():

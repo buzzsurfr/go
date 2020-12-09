@@ -1,4 +1,5 @@
 # go
+
 Golang utilities and packages
 
 ## Packages
@@ -6,7 +7,6 @@ Golang utilities and packages
 * `aws/cloudmap/resolver` - Cloud Map custom resolver for Go
   * `aws/cloudmap/resolver/grpc` gRPC resolver that implements [grpc/resolver.Resolver](https://pkg.go.dev/google.golang.org/grpc/resolver#Resolver)
   * `awsutil/detector` - Detects the compute type
-
 
 ## aws/cloudmap/resolver/grpc
 
@@ -28,7 +28,7 @@ to your code, and then `go [build|run|test]` will automatically fetch the necess
 
 Otherwise, to install the package, run the following command:
 
-```
+```sh
 go get -u github.com/buzzsurfr/go/aws/cloudmap/resolver/grpc
 ```
 
@@ -37,6 +37,7 @@ go get -u github.com/buzzsurfr/go/aws/cloudmap/resolver/grpc
 #### per-gRPC connection
 
 To add the resolver to a grpc `Dial` call, ensure the hostname specifies the scheme `awscloudmap:///`, matches the Cloud Map service and namespace, and use the [`WithResolvers()`](https://pkg.go.dev/google.golang.org/grpc@v1.33.1#WithResolvers) function:
+
 ```go
 grpc.WithResolvers(cloudmap.NewBuilder())
 ```
@@ -53,7 +54,7 @@ The Cloud Map resolver registers itself as an available _scheme_ named `awscloud
 
 ```go
 func init() {
-	grpc.SetDefaultScheme("awscloudmap")
+  grpc.SetDefaultScheme("awscloudmap")
 }
 ```
 
