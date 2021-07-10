@@ -160,6 +160,7 @@ func checkDocker() bool {
 
 // checkEC2 inspects the IMDS endpoint (instance metadata) for a valid network connection
 func checkEC2() bool {
-	_, err := net.DialTimeout("tcp4", "169.254.169.254:80", 25*time.Millisecond)
+	conn, err := net.DialTimeout("tcp4", "169.254.169.254:80", 25*time.Millisecond)
+	defer conn.Close()
 	return err != nil
 }
